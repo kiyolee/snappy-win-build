@@ -67,6 +67,14 @@
 
 #include "snappy-stubs-public.h"
 
+#ifndef __SNAPPY_API
+#ifdef _MSC_VER
+#include "snappy-dll.h"
+#else
+#define __SNAPPY_API
+#endif
+#endif
+
 #if defined(__x86_64__)
 
 // Enable 64-bit optimized versions of some routines.
@@ -505,7 +513,7 @@ inline int Bits::FindLSBSetNonZero64(uint64 n) {
 #endif  // End portable versions.
 
 // Variable-length integer encoding.
-class Varint {
+class __SNAPPY_API Varint {
  public:
   // Maximum lengths of varint encoding of uint32.
   static const int kMax32 = 5;

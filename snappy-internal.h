@@ -33,12 +33,20 @@
 
 #include "snappy-stubs-internal.h"
 
+#ifndef __SNAPPY_API
+#ifdef _MSC_VER
+#include "snappy-dll.h"
+#else
+#define __SNAPPY_API
+#endif
+#endif
+
 namespace snappy {
 namespace internal {
 
 // Working memory performs a single allocation to hold all scratch space
 // required for compression.
-class WorkingMemory {
+class __SNAPPY_API WorkingMemory {
  public:
   explicit WorkingMemory(size_t input_size);
   ~WorkingMemory();
@@ -73,6 +81,7 @@ class WorkingMemory {
 //
 // Returns an "end" pointer into "op" buffer.
 // "end - op" is the compressed size of "input".
+__SNAPPY_API
 char* CompressFragment(const char* input,
                        size_t input_length,
                        char* op,
