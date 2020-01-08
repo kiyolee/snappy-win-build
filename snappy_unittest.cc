@@ -40,6 +40,10 @@
 #include "snappy-test.h"
 #include "snappy-sinksource.h"
 
+#if defined(_MSC_VER) && _MSC_VER < 1700
+#define constexpr const
+#endif
+
 DEFINE_int32(start_len, -1,
              "Starting prefix size for testing (-1: just full file contents)");
 DEFINE_int32(end_len, -1,
