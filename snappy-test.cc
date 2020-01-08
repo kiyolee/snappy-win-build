@@ -50,10 +50,20 @@ namespace snappy {
 
 std::string ReadTestDataFile(const std::string& base, size_t size_limit) {
   std::string contents;
+#ifdef _MSC_VER
+  char* srcdir = NULL;
+  size_t srcdirlen = 0;
+  if (_dupenv_s(&srcdir, &srcdirlen, "srcdir") != 0) // This is set by Automake.
+     srcdir = NULL;
+#else
   const char* srcdir = getenv("srcdir");  // This is set by Automake.
+#endif
   std::string prefix;
   if (srcdir) {
     prefix = std::string(srcdir) + "/";
+#ifdef _MSC_VER
+    free(srcdir);
+#endif
   }
   file::GetContents(prefix + "testdata/" + base, &contents, file::Defaults()
       ).CheckSuccess();
@@ -71,9 +81,14 @@ std::string StrFormat(const char* format, ...) {
   char buf[4096];
   va_list ap;
   va_start(ap, format);
+  int const n =
+#ifdef _MSC_VER
+  _vsnprintf_s(buf, _TRUNCATE, format, ap);
+#else
   vsnprintf(buf, sizeof(buf), format, ap);
+#endif
   va_end(ap);
-  return buf;
+  return string(buf, (0 <= n && n < sizeof(buf)) ? n : (sizeof(buf)-1));
 }
 
 bool benchmark_running = false;

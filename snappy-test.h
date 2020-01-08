@@ -120,7 +120,12 @@ namespace file {
 
   DummyStatus GetContents(
       const std::string& filename, std::string* data, int unused) {
+#ifdef _MSC_VER
+    FILE* fp = NULL;
+    if (fopen_s(&fp, filename.c_str(), "rb") != 0) fp = NULL;
+#else
     FILE* fp = fopen(filename.c_str(), "rb");
+#endif
     if (fp == NULL) {
       perror(filename.c_str());
       exit(1);
@@ -144,7 +149,12 @@ namespace file {
 
   inline DummyStatus SetContents(
       const std::string& filename, const std::string& str, int unused) {
+#ifdef _MSC_VER
+    FILE* fp = NULL;
+    if (fopen_s(&fp, filename.c_str(), "wb") != 0) fp = NULL;
+#else
     FILE* fp = fopen(filename.c_str(), "wb");
+#endif
     if (fp == NULL) {
       perror(filename.c_str());
       exit(1);
