@@ -472,12 +472,9 @@ class LogMessage {
     std::cerr << std::endl;
   }
 
-  LogMessage& operator<<(const std::string& msg) {
-    std::cerr << msg;
-    return *this;
-  }
-  LogMessage& operator<<(int x) {
-    std::cerr << x;
+  template<typename _T>
+  LogMessage& operator<<(const _T& value) {
+      std::cerr << value;
     return *this;
   }
 };
