@@ -177,7 +177,11 @@ namespace file {
 namespace snappy {
 
 #define FLAGS_test_random_seed 301
+#if defined(_MSC_VER) && _MSC_VER < 1700
+typedef std::string TypeParam;
+#else
 using TypeParam = std::string;
+#endif
 
 void Test_CorruptedTest_VerifyCorrupted();
 void Test_Snappy_SimpleTests();
