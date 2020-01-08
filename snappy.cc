@@ -439,7 +439,7 @@ bool GetUncompressedLength(const char* start, size_t n, size_t* result) {
 }
 
 namespace {
-uint32 CalculateTableSize(uint32 input_size) {
+size_t CalculateTableSize(size_t input_size) {
   static_assert(
       kMaxHashTableSize >= kMinHashTableSize,
       "kMaxHashTableSize should be greater or equal to kMinHashTableSize.");
@@ -472,7 +472,7 @@ WorkingMemory::~WorkingMemory() {
 }
 
 uint16* WorkingMemory::GetHashTable(size_t fragment_size,
-                                    int* table_size) const {
+                                    size_t* table_size) const {
   const size_t htsize = CalculateTableSize(fragment_size);
   memset(table_, 0, htsize * sizeof(*table_));
   *table_size = htsize;
@@ -539,7 +539,7 @@ char* CompressFragment(const char* input,
                        size_t input_size,
                        char* op,
                        uint16* table,
-                       const int table_size) {
+                       const size_t table_size) {
   // "ip" is the input pointer, and "op" is the output pointer.
   const char* ip = input;
   assert(input_size <= kBlockSize);
@@ -714,7 +714,7 @@ static inline void Report(const char *algorithm, size_t compressed_size,
 //   bool TryFastAppend(const char* ip, size_t available, size_t length);
 // };
 
-static inline uint32 ExtractLowBytes(uint32 v, int n) {
+static inline uint32 ExtractLowBytes(uint32 v, size_t n) {
   assert(n >= 0);
   assert(n <= 4);
 #if SNAPPY_HAVE_BMI2
@@ -925,11 +925,11 @@ bool SnappyDecompressor::RefillTag() {
   assert(ip < ip_limit_);
   const unsigned char c = *(reinterpret_cast<const unsigned char*>(ip));
   const uint32 entry = char_table[c];
-  const uint32 needed = (entry >> 11) + 1;  // +1 byte for 'c'
+  const size_t needed = (entry >> 11) + 1;  // +1 byte for 'c'
   assert(needed <= sizeof(scratch_));
 
   // Read more bytes from reader if needed
-  uint32 nbuf = ip_limit_ - ip;
+  size_t nbuf = ip_limit_ - ip;
   if (nbuf < needed) {
     // Stitch together bytes from ip and reader to form the word
     // contents.  We store the needed bytes in "scratch_".  They
@@ -942,7 +942,7 @@ bool SnappyDecompressor::RefillTag() {
       size_t length;
       const char* src = reader_->Peek(&length);
       if (length == 0) return false;
-      uint32 to_add = std::min<uint32>(needed - nbuf, length);
+      size_t to_add = std::min(needed - nbuf, length);
       memcpy(scratch_ + nbuf, src, to_add);
       nbuf += to_add;
       reader_->Skip(to_add);
@@ -979,7 +979,7 @@ static bool InternalUncompress(Source* r, Writer* writer) {
 template <typename Writer>
 static bool InternalUncompressAllTags(SnappyDecompressor* decompressor,
                                       Writer* writer,
-                                      uint32 compressed_len,
+                                      size_t compressed_len,
                                       uint32 uncompressed_len) {
   Report("snappy_uncompress", compressed_len, uncompressed_len);
 
@@ -1039,11 +1039,11 @@ size_t Compress(Source* reader, Sink* writer) {
     assert(fragment_size == num_to_read);
 
     // Get encoding table for compression
-    int table_size;
+    size_t table_size;
     uint16* table = wmem.GetHashTable(num_to_read, &table_size);
 
     // Compress input_fragment and append to dest
-    const int max_output = MaxCompressedLength(num_to_read);
+    const size_t max_output = MaxCompressedLength(num_to_read);
 
     // Need a scratch buffer for the output, in case the byte sink doesn't
     // have room for us directly.
@@ -1491,7 +1491,7 @@ class SnappyScatteredWriter {
 
   inline bool TryFastAppend(const char* ip, size_t available, size_t length) {
     char* op = op_ptr_;
-    const int space_left = op_limit_ - op;
+    const size_t space_left = op_limit_ - op;
     if (length <= 16 && available >= 16 + kMaximumTagLength &&
         space_left >= 16) {
       // Fast path, used for the majority (about 95%) of invocations.
@@ -1507,7 +1507,7 @@ class SnappyScatteredWriter {
     char* const op_end = op_ptr_ + len;
     // See SnappyArrayWriter::AppendFromSelf for an explanation of
     // the "offset - 1u" trick.
-    if (SNAPPY_PREDICT_TRUE(offset - 1u < op_ptr_ - op_base_ &&
+    if (SNAPPY_PREDICT_TRUE(offset - 1u < size_t(op_ptr_ - op_base_) &&
                           op_end <= op_limit_)) {
       // Fast path: src and dst in current block.
       op_ptr_ = IncrementalCopy(op_ptr_ - offset, op_ptr_, op_end, op_limit_);
@@ -1581,7 +1581,7 @@ class SnappySinkAllocator {
   explicit SnappySinkAllocator(Sink* dest): dest_(dest) {}
   ~SnappySinkAllocator() {}
 
-  char* Allocate(int size) {
+  char* Allocate(size_t size) {
     Datablock block(new char[size], size);
     blocks_.push_back(block);
     return block.data;
@@ -1595,7 +1595,7 @@ class SnappySinkAllocator {
   void Flush(size_t size) {
     size_t size_written = 0;
     size_t block_size;
-    for (int i = 0; i < blocks_.size(); ++i) {
+    for (size_t i = 0; i < blocks_.size(); ++i) {
       block_size = std::min<size_t>(blocks_[i].size, size - size_written);
       dest_->AppendAndTakeOwnership(blocks_[i].data, block_size,
                                     &SnappySinkAllocator::Deleter, NULL);

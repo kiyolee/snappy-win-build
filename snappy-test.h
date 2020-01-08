@@ -150,7 +150,7 @@ namespace file {
       exit(1);
     }
 
-    int ret = fwrite(str.data(), str.size(), 1, fp);
+    size_t ret = fwrite(str.data(), str.size(), 1, fp);
     if (ret != 1) {
       perror("fwrite");
       exit(1);

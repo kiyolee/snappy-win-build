@@ -216,7 +216,7 @@ static bool Compress(const char* input, size_t input_size, CompressorType comp,
 }
 
 static bool Uncompress(const std::string& compressed, CompressorType comp,
-                       int size, std::string* output) {
+                       size_t size, std::string* output) {
   switch (comp) {
 #ifdef ZLIB_VERSION
     case ZLIB: {
@@ -272,18 +272,18 @@ static void Measure(const char* data,
   static const int kRuns = 5;
   double ctime[kRuns];
   double utime[kRuns];
-  int compressed_size = 0;
+  size_t compressed_size = 0;
 
   {
     // Chop the input into blocks
-    int num_blocks = (length + block_size - 1) / block_size;
+    size_t num_blocks = (length + block_size - 1) / block_size;
     std::vector<const char*> input(num_blocks);
     std::vector<size_t> input_length(num_blocks);
     std::vector<std::string> compressed(num_blocks);
     std::vector<std::string> output(num_blocks);
-    for (int b = 0; b < num_blocks; b++) {
-      int input_start = b * block_size;
-      int input_limit = std::min<int>((b+1)*block_size, length);
+    for (size_t b = 0; b < num_blocks; b++) {
+      size_t input_start = b * block_size;
+      size_t input_limit = std::min((b+1)*block_size, length);
       input[b] = data+input_start;
       input_length[b] = input_limit-input_start;
 
@@ -301,30 +301,30 @@ static void Measure(const char* data,
     for (int run = 0; run < kRuns; run++) {
       CycleTimer ctimer, utimer;
 
-      for (int b = 0; b < num_blocks; b++) {
+      for (size_t b = 0; b < num_blocks; b++) {
         // Pre-grow the output buffer so we don't measure string append time.
         compressed[b].resize(MinimumRequiredOutputSpace(block_size, comp));
       }
 
       ctimer.Start();
-      for (int b = 0; b < num_blocks; b++)
+      for (size_t b = 0; b < num_blocks; b++)
         for (int i = 0; i < repeats; i++)
           Compress(input[b], input_length[b], comp, &compressed[b], true);
       ctimer.Stop();
 
       // Compress once more, with resizing, so we don't leave junk
       // at the end that will confuse the decompressor.
-      for (int b = 0; b < num_blocks; b++) {
+      for (size_t b = 0; b < num_blocks; b++) {
         Compress(input[b], input_length[b], comp, &compressed[b], false);
       }
 
-      for (int b = 0; b < num_blocks; b++) {
+      for (size_t b = 0; b < num_blocks; b++) {
         output[b].resize(input_length[b]);
       }
 
       utimer.Start();
       for (int i = 0; i < repeats; i++)
-        for (int b = 0; b < num_blocks; b++)
+        for (size_t b = 0; b < num_blocks; b++)
           Uncompress(compressed[b], comp, input_length[b], &output[b]);
       utimer.Stop();
 
@@ -353,12 +353,12 @@ static void Measure(const char* data,
          x.c_str(),
          block_size/(1<<20),
          static_cast<int>(length), static_cast<uint32>(compressed_size),
-         (compressed_size * 100.0) / std::max<int>(1, length),
+         (compressed_size * 100.0) / std::max<size_t>(1, length),
          comp_rate,
          urate.c_str());
 }
 
-static int VerifyString(const std::string& input) {
+static size_t VerifyString(const std::string& input) {
   std::string compressed;
   DataEndingAtUnreadablePage i(input);
   const size_t written = snappy::Compress(i.data(), i.size(), &compressed);
@@ -411,7 +411,7 @@ static void VerifyIOVec(const std::string& input) {
     num = input.size();
   }
   struct iovec* iov = new iovec[num];
-  int used_so_far = 0;
+  size_t used_so_far = 0;
   std::bernoulli_distribution one_in_five(1.0 / 5);
   for (size_t i = 0; i < num; ++i) {
     assert(used_so_far < input.size());
@@ -450,7 +450,7 @@ static void VerifyNonBlockedCompression(const std::string& input) {
 
   // Setup compression table
   snappy::internal::WorkingMemory wmem(input.size());
-  int table_size;
+  size_t table_size;
   uint16* table = wmem.GetHashTable(input.size(), &table_size);
 
   // Compress entire input in one shot
@@ -479,7 +479,7 @@ static void VerifyNonBlockedCompression(const std::string& input) {
   {
     static const int kNumBlocks = 10;
     struct iovec vec[kNumBlocks];
-    const int block_size = 1 + input.size() / kNumBlocks;
+    const size_t block_size = 1 + input.size() / kNumBlocks;
     std::string iovec_data(block_size * kNumBlocks, 'x');
     for (int i = 0; i < kNumBlocks; i++) {
       vec[i].iov_base = string_as_array(&iovec_data) + i * block_size;
@@ -501,11 +501,11 @@ static std::string Expand(const std::string& input) {
   return data;
 }
 
-static int Verify(const std::string& input) {
+static size_t Verify(const std::string& input) {
   VLOG(1) << "Verifying input of size " << input.size();
 
   // Compress using string based routines
-  const int result = VerifyString(input);
+  const size_t result = VerifyString(input);
 
   // Verify using sink based routines
   VerifyStringSink(input);
@@ -603,7 +603,7 @@ TEST(CorruptedTest, VerifyCorrupted) {
 // invokes these routines.
 static void AppendLiteral(std::string* dst, const std::string& literal) {
   if (literal.empty()) return;
-  int n = literal.size() - 1;
+  size_t n = literal.size() - 1;
   if (n < 60) {
     // Fit length in tag byte
     dst->push_back(0 | (n << 2));
@@ -621,10 +621,10 @@ static void AppendLiteral(std::string* dst, const std::string& literal) {
   *dst += literal;
 }
 
-static void AppendCopy(std::string* dst, int offset, int length) {
+static void AppendCopy(std::string* dst, size_t offset, size_t length) {
   while (length > 0) {
     // Figure out how much to copy in one shot
-    int to_copy;
+    size_t to_copy;
     if (length >= 68) {
       to_copy = 64;
     } else if (length > 64) {
@@ -736,16 +736,16 @@ TEST(Snappy, FourByteOffset) {
   std::string fragment2 = "some other string";
 
   // How many times each fragment is emitted.
-  const int n1 = 2;
-  const int n2 = 100000 / fragment2.size();
-  const int length = n1 * fragment1.size() + n2 * fragment2.size();
+  const size_t n1 = 2;
+  const size_t n2 = 100000 / fragment2.size();
+  const size_t length = n1 * fragment1.size() + n2 * fragment2.size();
 
   std::string compressed;
   Varint::Append32(&compressed, length);
 
   AppendLiteral(&compressed, fragment1);
   std::string src = fragment1;
-  for (int i = 0; i < n2; i++) {
+  for (size_t i = 0; i < n2; i++) {
     AppendLiteral(&compressed, fragment2);
     src += fragment2;
   }
@@ -956,7 +956,7 @@ TEST(Snappy, ZeroOffsetCopyValidation) {
 
 namespace {
 
-int TestFindMatchLength(const char* s1, const char *s2, unsigned length) {
+size_t TestFindMatchLength(const char* s1, const char *s2, size_t length) {
   std::pair<size_t, bool> p =
       snappy::internal::FindMatchLength(s1, s2, s2 + length);
   CHECK_EQ(p.first < 8, p.second);
@@ -1073,12 +1073,12 @@ TEST(Snappy, FindMatchLengthRandom) {
     }
     DataEndingAtUnreadablePage u(s);
     DataEndingAtUnreadablePage v(t);
-    int matched = TestFindMatchLength(u.data(), v.data(), t.size());
+    size_t matched = TestFindMatchLength(u.data(), v.data(), t.size());
     if (matched == t.size()) {
       EXPECT_EQ(s, t);
     } else {
       EXPECT_NE(s[matched], t[matched]);
-      for (int j = 0; j < matched; j++) {
+      for (size_t j = 0; j < matched; j++) {
         EXPECT_EQ(s[j], t[j]);
       }
     }
@@ -1209,12 +1209,12 @@ static void MeasureFile(const char* fname) {
   CHECK_OK(file::GetContents(fname, &fullinput, file::Defaults()));
   printf("%-40s :\n", fname);
 
-  int start_len = (FLAGS_start_len < 0) ? fullinput.size() : FLAGS_start_len;
-  int end_len = fullinput.size();
+  size_t start_len = (FLAGS_start_len < 0) ? fullinput.size() : FLAGS_start_len;
+  size_t end_len = fullinput.size();
   if (FLAGS_end_len >= 0) {
-    end_len = std::min<int>(fullinput.size(), FLAGS_end_len);
+    end_len = std::min<size_t>(fullinput.size(), FLAGS_end_len);
   }
-  for (int len = start_len; len <= end_len; len++) {
+  for (size_t len = start_len; len <= end_len; len++) {
     const char* const input = fullinput.data();
     int repeats = (FLAGS_bytes + len) / (len + 1);
     if (FLAGS_zlib)     Measure(input, len, ZLIB, repeats, 1024<<10);
@@ -1317,7 +1317,7 @@ static void BM_UIOVec(int iters, int arg) {
   const int kNumEntries = 10;
   struct iovec iov[kNumEntries];
   char *dst = new char[contents.size()];
-  int used_so_far = 0;
+  size_t used_so_far = 0;
   for (int i = 0; i < kNumEntries; ++i) {
     iov[i].iov_base = dst + used_so_far;
     if (used_so_far == contents.size()) {
@@ -1469,14 +1469,14 @@ static void BM_ZFlatIncreasingTableSize(int iters, int arg) {
   SetBenchmarkBytesProcessed(static_cast<int64>(iters) * total_contents_size);
   StartBenchmarkTiming();
   while (iters-- > 0) {
-    for (int i = 0; i < contents.size(); ++i) {
+    for (size_t i = 0; i < contents.size(); ++i) {
       snappy::RawCompress(contents[i].data(), contents[i].size(), dst[i],
                           &zsize);
     }
   }
   StopBenchmarkTiming();
 
-  for (int i = 0; i < dst.size(); ++i) {
+  for (size_t i = 0; i < dst.size(); ++i) {
     delete[] dst[i];
   }
   SetBenchmarkLabel(StrFormat("%zd tables", contents.size()));
