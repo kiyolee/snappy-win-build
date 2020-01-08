@@ -125,7 +125,7 @@ void StopBenchmarkTiming() {
   double elapsed_real = static_cast<double>(
       benchmark_stop_real.QuadPart - benchmark_start_real.QuadPart) /
       benchmark_frequency.QuadPart;
-  benchmark_real_time_us += elapsed_real * 1e6 + 0.5;
+  benchmark_real_time_us += static_cast<int64>(elapsed_real * 1e6 + 0.5);
 
   FILETIME benchmark_stop_cpu, dummy;
   CHECK(GetProcessTimes(
@@ -210,7 +210,7 @@ void Benchmark::Run() {
     for (int run = 0; run < kNumRuns; ++run) {
       ResetBenchmarkTiming();
       StartBenchmarkTiming();
-      (*function_)(num_iterations, test_case_num);
+      (*function_)(static_cast<int>(num_iterations), test_case_num);
       StopBenchmarkTiming();
 
       benchmark_runs[run].real_time_us = benchmark_real_time_us;

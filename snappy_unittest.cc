@@ -342,8 +342,8 @@ static void Measure(const char* data,
   std::sort(utime, utime + kRuns);
   const int med = kRuns/2;
 
-  float comp_rate = (length / ctime[med]) * repeats / 1048576.0;
-  float uncomp_rate = (length / utime[med]) * repeats / 1048576.0;
+  float comp_rate = static_cast<float>((length / ctime[med]) * repeats / 1048576.0);
+  float uncomp_rate = static_cast<float>((length / utime[med]) * repeats / 1048576.0);
   std::string x = names[comp];
   x += ":";
   std::string urate = (uncomp_rate >= 0) ? StrFormat("%.1f", uncomp_rate)
@@ -404,7 +404,7 @@ static void VerifyIOVec(const std::string& input) {
   // Try uncompressing into an iovec containing a random number of entries
   // ranging from 1 to 10.
   char* buf = new char[input.size()];
-  std::minstd_rand0 rng(input.size());
+  std::minstd_rand0 rng(static_cast<std::minstd_rand0::result_type>(input.size()));
   std::uniform_int_distribution<size_t> uniform_1_to_10(1, 10);
   size_t num = uniform_1_to_10(rng);
   if (input.size() < num) {
@@ -446,7 +446,7 @@ static void VerifyNonBlockedCompression(const std::string& input) {
   }
 
   std::string prefix;
-  Varint::Append32(&prefix, input.size());
+  Varint::Append32(&prefix, static_cast<uint32>(input.size()));
 
   // Setup compression table
   snappy::internal::WorkingMemory wmem(input.size());
@@ -606,7 +606,7 @@ static void AppendLiteral(std::string* dst, const std::string& literal) {
   size_t n = literal.size() - 1;
   if (n < 60) {
     // Fit length in tag byte
-    dst->push_back(0 | (n << 2));
+    dst->push_back(static_cast<char>(0 | (n << 2)));
   } else {
     // Encode in upcoming bytes
     char number[4];
@@ -636,14 +636,14 @@ static void AppendCopy(std::string* dst, size_t offset, size_t length) {
 
     if ((to_copy >= 4) && (to_copy < 12) && (offset < 2048)) {
       assert(to_copy-4 < 8);            // Must fit in 3 bits
-      dst->push_back(1 | ((to_copy-4) << 2) | ((offset >> 8) << 5));
-      dst->push_back(offset & 0xff);
+      dst->push_back(static_cast<char>(1 | ((to_copy-4) << 2) | ((offset >> 8) << 5)));
+      dst->push_back(static_cast<char>(offset & 0xff));
     } else if (offset < 65536) {
-      dst->push_back(2 | ((to_copy-1) << 2));
-      dst->push_back(offset & 0xff);
-      dst->push_back(offset >> 8);
+      dst->push_back(static_cast<char>(2 | ((to_copy-1) << 2)));
+      dst->push_back(static_cast<char>(offset & 0xff));
+      dst->push_back(static_cast<char>(offset >> 8));
     } else {
-      dst->push_back(3 | ((to_copy-1) << 2));
+      dst->push_back(static_cast<char>(3 | ((to_copy-1) << 2)));
       dst->push_back(offset & 0xff);
       dst->push_back((offset >> 8) & 0xff);
       dst->push_back((offset >> 16) & 0xff);
@@ -741,7 +741,7 @@ TEST(Snappy, FourByteOffset) {
   const size_t length = n1 * fragment1.size() + n2 * fragment2.size();
 
   std::string compressed;
-  Varint::Append32(&compressed, length);
+  Varint::Append32(&compressed, static_cast<uint32>(length));
 
   AppendLiteral(&compressed, fragment1);
   std::string src = fragment1;
@@ -1216,10 +1216,10 @@ static void MeasureFile(const char* fname) {
   }
   for (size_t len = start_len; len <= end_len; len++) {
     const char* const input = fullinput.data();
-    int repeats = (FLAGS_bytes + len) / (len + 1);
+    int repeats = static_cast<int>((FLAGS_bytes + len) / (len + 1));
     if (FLAGS_zlib)     Measure(input, len, ZLIB, repeats, 1024<<10);
     if (FLAGS_lzo)      Measure(input, len, LZO, repeats, 1024<<10);
-    if (FLAGS_snappy)    Measure(input, len, SNAPPY, repeats, 4096<<10);
+    if (FLAGS_snappy)   Measure(input, len, SNAPPY, repeats, 4096<<10);
 
     // For block-size based measurements
     if (0 && FLAGS_snappy) {

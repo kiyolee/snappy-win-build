@@ -212,7 +212,7 @@ class CycleTimer {
 
     double elapsed = static_cast<double>(stop.QuadPart - start_.QuadPart) /
         frequency.QuadPart;
-    real_time_us_ += elapsed * 1e6 + 0.5;
+    real_time_us_ += static_cast<int64>(elapsed * 1e6 + 0.5);
 #else
     struct timeval stop;
     gettimeofday(&stop, NULL);

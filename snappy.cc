@@ -384,12 +384,12 @@ static inline char* EmitCopyAtMost64(char* op, size_t offset, size_t len) {
   if (len_less_than_12 && SNAPPY_PREDICT_TRUE(offset < 2048)) {
     // offset fits in 11 bits.  The 3 highest go in the top of the first byte,
     // and the rest go in the second byte.
-    *op++ = COPY_1_BYTE_OFFSET + ((len - 4) << 2) + ((offset >> 3) & 0xe0);
-    *op++ = offset & 0xff;
+    *op++ = static_cast<char>(COPY_1_BYTE_OFFSET + ((len - 4) << 2) + ((offset >> 3) & 0xe0));
+    *op++ = static_cast<char>(offset & 0xff);
   } else {
     // Write 4 bytes, though we only care about 3 of them.  The output buffer
     // is required to have some slack, so the extra byte won't overrun it.
-    uint32 u = COPY_2_BYTE_OFFSET + ((len - 1) << 2) + (offset << 8);
+    uint32 u = static_cast<uint32>(COPY_2_BYTE_OFFSET + ((len - 1) << 2) + (offset << 8));
     LittleEndian::Store32(op, u);
     op += 3;
   }
@@ -451,7 +451,7 @@ size_t CalculateTableSize(size_t input_size) {
   }
   // This is equivalent to Log2Ceiling(input_size), assuming input_size > 1.
   // 2 << Log2Floor(x - 1) is equivalent to 1 << (1 + Log2Floor(x - 1)).
-  return 2u << Bits::Log2Floor(input_size - 1);
+  return 2u << Bits::Log2Floor(static_cast<uint32>(input_size - 1));
 }
 }  // namespace
 
@@ -544,7 +544,7 @@ char* CompressFragment(const char* input,
   const char* ip = input;
   assert(input_size <= kBlockSize);
   assert((table_size & (table_size - 1)) == 0);  // table must be power of two
-  const int shift = 32 - Bits::Log2Floor(table_size);
+  const int shift = 32 - Bits::Log2Floor(static_cast<uint32>(table_size));
   assert(static_cast<int>(kuint32max >> shift) == table_size - 1);
   const char* ip_end = input + input_size;
   const char* base_ip = ip;
@@ -602,7 +602,7 @@ char* CompressFragment(const char* input,
         assert(candidate >= base_ip);
         assert(candidate < ip);
 
-        table[hash] = ip - base_ip;
+        table[hash] = static_cast<uint16>(ip - base_ip);
       } while (SNAPPY_PREDICT_TRUE(UNALIGNED_LOAD32(ip) !=
                                  UNALIGNED_LOAD32(candidate)));
 
@@ -610,7 +610,7 @@ char* CompressFragment(const char* input,
       // than 4 bytes match.  But, prior to the match, input
       // bytes [next_emit, ip) are unmatched.  Emit them as "literal bytes."
       assert(next_emit + 16 <= ip_end);
-      op = EmitLiteral</*allow_fast_path=*/true>(op, next_emit, ip - next_emit);
+      op = EmitLiteral</*allow_fast_path=*/true>(op, next_emit, static_cast<int>(ip - next_emit));
 
       // Step 3: Call EmitCopy, and then see if another EmitCopy could
       // be our next move.  Repeat until we find no match for the
@@ -647,11 +647,11 @@ char* CompressFragment(const char* input,
         // we also update table[Hash(ip - 1, shift)] and table[Hash(ip, shift)].
         input_bytes = GetEightBytesAt(ip - 1);
         uint32 prev_hash = HashBytes(GetUint32AtOffset(input_bytes, 0), shift);
-        table[prev_hash] = ip - base_ip - 1;
+        table[prev_hash] = static_cast<uint16>(ip - base_ip - 1);
         uint32 cur_hash = HashBytes(GetUint32AtOffset(input_bytes, 1), shift);
         candidate = base_ip + table[cur_hash];
         candidate_bytes = UNALIGNED_LOAD32(candidate);
-        table[cur_hash] = ip - base_ip;
+        table[cur_hash] = static_cast<uint16>(ip - base_ip);
       } while (GetUint32AtOffset(input_bytes, 1) == candidate_bytes);
 
       next_hash = HashBytes(GetUint32AtOffset(input_bytes, 2), shift);
@@ -663,7 +663,7 @@ char* CompressFragment(const char* input,
   // Emit the remaining bytes as a literal
   if (next_emit < ip_end) {
     op = EmitLiteral</*allow_fast_path=*/false>(op, next_emit,
-                                                ip_end - next_emit);
+                                                static_cast<int>(ip_end - next_emit));
   }
 
   return op;
@@ -877,7 +877,7 @@ class SnappyDecompressor {
           size_t n;
           ip = reader_->Peek(&n);
           avail = n;
-          peeked_ = avail;
+          peeked_ = static_cast<uint32>(avail);
           if (avail == 0) return;  // Premature end of input
           ip_limit_ = ip + avail;
         }
@@ -915,7 +915,7 @@ bool SnappyDecompressor::RefillTag() {
     reader_->Skip(peeked_);   // All peeked bytes are used up
     size_t n;
     ip = reader_->Peek(&n);
-    peeked_ = n;
+    peeked_ = static_cast<uint32>(n);
     eof_ = (n == 0);
     if (eof_) return false;
     ip_limit_ = ip + n;
@@ -1001,7 +1001,7 @@ size_t Compress(Source* reader, Sink* writer) {
   size_t N = reader->Available();
   const size_t uncompressed_size = N;
   char ulength[Varint::kMax32];
-  char* p = Varint::Encode32(ulength, N);
+  char* p = Varint::Encode32(ulength, static_cast<uint32>(N));
   writer->Append(ulength, p-ulength);
   written += (p - ulength);
 
