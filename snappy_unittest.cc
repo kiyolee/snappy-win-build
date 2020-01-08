@@ -99,7 +99,11 @@ class DataEndingAtUnreadablePage {
 #else  // defined(HAVE_FUNC_MMAP) && defined(HAVE_FUNC_SYSCONF)
 
 // Fallback for systems without mmap.
+#if defined(_MSC_VER) && _MSC_VER < 1700
+typedef std::string DataEndingAtUnreadablePage;
+#else
 using DataEndingAtUnreadablePage = std::string;
+#endif
 
 #endif
 
