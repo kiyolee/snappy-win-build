@@ -1411,8 +1411,13 @@ static void BM_ZFlat(int iters, int arg) {
       static_cast<double>(zsize) / std::max<size_t>(1, contents.size());
   SetBenchmarkLabel(StrFormat("%s (%.2f %%)", files[arg].label,
                               100.0 * compression_ratio));
+#if defined(_MSC_VER) && _MSC_VER >= 1900
   VLOG(0) << StrFormat("compression for %s: %zd -> %zd bytes",
                        files[arg].label, contents.size(), zsize);
+#else
+  VLOG(0) << StrFormat("compression for %s: %llu -> %llu bytes",
+                       files[arg].label, static_cast<unsigned long long>(contents.size()), static_cast<unsigned long long>(zsize));
+#endif
   delete[] dst;
 }
 BENCHMARK(BM_ZFlat)->DenseRange(0, ARRAYSIZE(files) - 1);
@@ -1486,7 +1491,11 @@ static void BM_ZFlatIncreasingTableSize(int iters, int arg) {
   for (size_t i = 0; i < dst.size(); ++i) {
     delete[] dst[i];
   }
+#if defined(_MSC_VER) && _MSC_VER >= 1900
   SetBenchmarkLabel(StrFormat("%zd tables", contents.size()));
+#else
+  SetBenchmarkLabel(StrFormat("%llu tables", static_cast<unsigned long long>(contents.size())));
+#endif
 }
 BENCHMARK(BM_ZFlatIncreasingTableSize)->DenseRange(0, 0);
 
