@@ -1412,8 +1412,7 @@ static void BM_ZFlat(int iters, int arg) {
   SetBenchmarkLabel(StrFormat("%s (%.2f %%)", files[arg].label,
                               100.0 * compression_ratio));
   VLOG(0) << StrFormat("compression for %s: %zd -> %zd bytes",
-                       files[arg].label, static_cast<int>(contents.size()),
-                       static_cast<int>(zsize));
+                       files[arg].label, contents.size(), zsize);
   delete[] dst;
 }
 BENCHMARK(BM_ZFlat)->DenseRange(0, ARRAYSIZE(files) - 1);
