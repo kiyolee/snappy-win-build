@@ -165,6 +165,9 @@ inline char* IncrementalCopySlow(const char* src, char* op,
 // This is a table of shuffle control masks that can be used as the source
 // operand for PSHUFB to permute the contents of the destination XMM register
 // into a repeating byte pattern.
+#if defined(_MSC_VER) && _MSC_VER < 1900
+#define alignas(N) __declspec(align(N))
+#endif
 alignas(16) const char pshufb_fill_patterns[7][16] = {
   {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
   {0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1},
