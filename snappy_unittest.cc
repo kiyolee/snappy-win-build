@@ -153,7 +153,11 @@ void VerifyIOVec(const std::string& input) {
   // Try uncompressing into an iovec containing a random number of entries
   // ranging from 1 to 10.
   char* buf = new char[input.size()];
+#if defined(_MSC_VER) && _MSC_VER < 1700 && (defined(_DEBUG) || defined(_RNG_CHECK))
+  std::minstd_rand0 rng(static_cast<std::minstd_rand0::result_type>(!input.empty() ? input.size() : 1));
+#else
   std::minstd_rand0 rng(static_cast<std::minstd_rand0::result_type>(input.size()));
+#endif
   std::uniform_int_distribution<size_t> uniform_1_to_10(1, 10);
   size_t num = uniform_1_to_10(rng);
   if (input.size() < num) {
