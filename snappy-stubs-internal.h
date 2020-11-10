@@ -95,7 +95,11 @@
 #ifdef ARRAYSIZE
 #undef ARRAYSIZE
 #endif
+#if defined(_MSC_VER) && _MSC_VER >= 1700
 #define ARRAYSIZE(a) int{sizeof(a) / sizeof(*(a))}
+#else
+#define ARRAYSIZE(a) int(sizeof(a) / sizeof(*(a)))
+#endif
 
 // Static prediction hints.
 #ifdef HAVE_BUILTIN_EXPECT
